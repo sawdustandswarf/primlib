@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sleeve &#8212; Specification &amp; Drawings</title>
+<style>
+:root{--ink:#1a1a24;--acc:#2b5b84;--bg:#ffffff;--soft:#f4f6f9;--mut:#5c6472;--line:#d9dee5}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--soft);line-height:1.55}
+main{max-width:1060px;margin:0 auto;background:var(--bg);padding:40px 52px 90px;box-shadow:0 0 24px rgba(0,0,0,.08)}
+h1{font-size:1.9em;margin:.2em 0 .1em}
+h2{font-size:1.45em;border-bottom:2px solid var(--line);padding-bottom:.25em;margin-top:1.7em;color:var(--acc)}
+h3{font-size:1.13em;margin:1.3em 0 .2em;color:var(--acc)}
+code{background:#eef1f5;border:1px solid var(--line);border-radius:4px;padding:0 .3em;font-size:.9em;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{background:#eef1f5;border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow:auto;font-size:.82em;line-height:1.5;margin:.8em 0 1.4em}
+pre code{background:none;border:0;padding:0;font-size:1em}
+table{border-collapse:collapse;width:100%;margin:.6em 0 1.2em;font-size:.92em}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+a{color:var(--acc)}
+figure{margin:1.4em 0 2em;padding:14px;border:1px solid var(--line);border-radius:8px;background:#fff}
+figure svg{width:100%;height:auto;display:block}
+figure.example img{width:100%;max-width:380px;height:auto;display:block;margin:0 auto}
+figcaption{font-size:.9em;color:var(--mut);margin-top:.55em;text-align:center}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:860px){main{padding:22px 14px 60px}.fig-grid{grid-template-columns:1fr}}
+.foot{margin-top:2.5em;padding-top:1em;border-top:1px solid var(--line);color:var(--mut);font-size:.85em}
+hr.sheet{border:0;border-top:2px dashed var(--line);margin:3.5em -52px}
+legend,.legend{font-size:.85em;color:var(--mut)}
+.swatch{display:inline-block;width:1.6em;height:0;border-top:2px solid #b3bac3;vertical-align:middle;margin:0 .3em}
+.swatch.ovr{border-color:#c0392b}
+@media print{hr.sheet{page-break-before:always;border:0;margin:0}figure{break-inside:avoid}}
+</style>
+</head>
+<body>
+<main>
+<h1>Sleeve</h1>
+<p>
+The sleeve is the barrel that rides a <b>retained pin</b>
+(<code>pin_retained.py</code> in this library): a hollow solid of revolution
+&#8212; an exterior cylinder capped by 45&#176; cone flanks that meet at a
+sharp <b>ridge ring</b>, around a bore that is the retained pin grown by a
+running clearance. Two stacked sleeves touch only along the ridge ring
+&#8212; they <i>kiss at a ring</i> &#8212; so a column of them closes
+cleanly. A solid of revolution is fully described by an elevation and a
+plan; the bore needs the fit section on the second sheet.
+</p>
+<p class="foot">
+This page is the <b>single source of truth</b> for the sleeve. The part lives
+in the parts library <code>fc_lib</code> as the module
+<code>sleeve.py</code>, alongside its mating part
+<code>pin_retained.py</code>; other notes point here rather than duplicate it.
+</p>
+
+<h2>Module</h2>
+<p>
+The part is built by <code>sleeve()</code> in <code>fc_lib/sleeve.py</code>.
+The module imports <code>pin_retained()</code> from the same library to cut
+the internal void, so the two files belong together. The signature:
+</p>
+<pre><code>def sleeve(doc, name, height, diam, diam_end,
+           diam_outer=13.0, tolerance=0.1, ridge_radius=None):
+    """Hollow sleeve exactly `height` tall, riding a retained pin.
+    `diam_outer` is the sleeve's outside diameter; `tolerance` the
+    running clearance over the pin. `ridge_radius` defaults to the
+    midpoint between the bore flare and the outer wall so the contact
+    ring clears the pin cut."""</code></pre>
+<p>
+Typical use from a script or the FreeCAD Python console:
+</p>
+<pre><code>import sys
+sys.path.insert(0, "&lt;path to&gt;/fc_lib")
+import FreeCAD as App
+from sleeve import sleeve
+
+doc = App.newDocument()
+sk = sleeve(doc, "Sleeve", height=10.0, diam=6.0, diam_end=10.0)
+doc.recompute()</code></pre>
+<p>
+The module also offers a <b>solid-of-revolution</b> route through
+<code>profile_points()</code>, <code>profile_sketch()</code> and
+<code>sleeve_revolved()</code>, which builds the sleeve as a sketched
+meridian profile revolved about the <i>z</i> axis &#8212; see Method 2 under
+Construction.
+</p>
+<p>
+Run the module directly (<code>freecadcmd sleeve.py</code>) to build an
+inspection model: one retained pin plus one sleeve sliced down the centre
+axis.
+</p>
+
+<h2>Construction</h2>
+<p>
+The sleeve is a <b>solid of revolution</b>, and there are two equivalent ways
+to build it as booleans. The model uses the first (boolean cut tools); the
+second (revolve of the meridian profile) gives the identical solid and is
+often easier to reason about &#8212; and is implemented directly by
+<code>sleeve_revolved()</code> (see Method 2 below).
+</p>
+
+<h3>Method 1 &#8212; end-face cut tools (as modelled)</h3>
+<p>
+The barrel starts as a plain cylinder of diameter <code>kd</code>, exactly
+one sleeve tall. Two cut tools, one per end, remove everything on the wrong
+side of each end face; the finished faces then read
+<code>z = |r &#8722; a|</code> at the bottom and
+<code>z = h &#8722; |r &#8722; a|</code> at the top.
+</p>
+<ol>
+<li><b>Bottom core cone</b> &#8212; radius <code>a</code> at <code>z = 0</code>
+    tapering to its apex at <code>z = a</code> (<code>r = a &#8722; z</code>):
+    removes the deep valley around the axis.</li>
+<li><b>Bottom rim wedge</b> &#8212; the band
+    <code>a + z &lt; r &lt; kd/2</code> of height <code>fl</code>, built as a
+    cylinder minus a cone (<code>r = a + z</code>): removes the outer slope
+    down to the rim.</li>
+<li><b>Bottom tool</b> &#8212; their union, subtracted from the body. The top
+    tool is the same pair mirrored about <code>z = h/2</code>.</li>
+<li><b>The toleranced pin</b> &#8212; <code>pin_retained()</code> grown by
+    <code>tol</code> on every face &#8212; subtracted last, leaving the
+    bore.</li>
+</ol>
+<p>
+Subtracting the whole toleranced pin is safe: near the end faces its flares
+lie inside the valleys the cut tools have already opened, so only its throat
+cylinder does any cutting. The bore the sleeve presents is therefore the
+valley cones opening into the throat; the pin&#8217;s flares ride in the
+valleys with a radial gap of exactly <code>fl = kd/2 &#8722; a</code> (the
+two 45&#176; cones are parallel).
+</p>
+
+<h3>Method 2 &#8212; revolve of the meridian profile</h3>
+<p>
+The same solid is the revolution of its meridian cross-section about the
+<code>z</code> axis: the region between the outer profile (the W /
+inverted-W capped cylinder) and the bore profile (the valley cones plus the
+throat cylinder). The module builds this route directly:
+</p>
+<pre><code>profile_points(height, diam, diam_end,
+               diam_outer=13.0, tolerance=0.1, ridge_radius=None)
+    -&gt; the six profile vertices Q0..Q5 as App.Vector (x, 0, z)
+
+profile_sketch(doc, name, height, diam, diam_end,
+               diam_outer=13.0, tolerance=0.1, ridge_radius=None)
+    -&gt; the profile as a Sketcher sketch in the XZ plane
+
+sleeve_revolved(doc, name, height, diam, diam_end,
+                diam_outer=13.0, tolerance=0.1, ridge_radius=None)
+    -&gt; the same sleeve as a Part::Revolution about the z axis</code></pre>
+<p>
+Vertices are <code>(x, y, z)</code> with <code>y = 0</code> throughout, in
+path order (closing Q5 &#8594; Q0 along the bottom valley cone):
+</p>
+<pre><code>Q0 = (ridge,      0, 0             )   bottom valley apex (bore vee)
+Q1 = (outer_rad,  0, rim_h         )   bottom flank -&gt; outer wall
+Q2 = (outer_rad,  0, h &#8722; rim_h     )   outer wall -&gt; top flank
+Q3 = (ridge,      0, h             )   top flank -&gt; top valley apex
+Q4 = (throat_rad, 0, h &#8722; valley_z  )   top valley cone -&gt; throat
+Q5 = (throat_rad, 0, valley_z      )   throat -&gt; bottom valley cone</code></pre>
+<p>
+where <code>valley_z = ridge &#8722; throat_rad</code>. The bore is therefore
+the two 45&#176; valley cones (<code>r = ridge &#8722; z</code> at the bottom,
+<code>r = ridge &#8722; (h &#8722; z)</code> at the top) opening into the
+throat cylinder &#8212; exactly the surfaces the cut tools leave, not the pin
+profile. Nothing touches the axis, so the revolved solid is hollow.
+</p>
+<p>
+When <code>2&#183;a &gt; h</code> &#8212; true for the defaults on this page:
+<code>2a = 11.6&nbsp;mm</code> vs <code>h = 10&nbsp;mm</code> &#8212; the two
+valley cones overlap through the middle and the meridian region is
+self-intersecting there; the revolve is taken over the part where the profile
+is well-ordered, which is exactly what the boolean model produces.
+</p>
+<p>
+<code>a</code> (<code>ridge_radius</code>) is the <b>real parameter</b>: it
+sets the ring stacked sleeves kiss on, the flank height
+<code>fl = kd/2 &#8722; a</code>, and how far the valley cones reach into
+the height. The default <code>(flare_rad + outer_rad)/2</code> places it
+midway between the bore flare and the outer wall so the ring clears the pin
+cut.
+</p>
+<p>
+<b>Valid range:</b> <code>a &gt; flare_rad</code> (the contact ring must
+clear the bore), <code>a &#8804; outer_rad</code> (the ridge cannot stick out
+past the wall), <code>outer_rad &#8722; a &lt; h/2</code> (the W flanks must
+fit in the height) and <code>h &gt; 2&#183;c_b</code> (the bore flares must
+fit). Outside that range <code>sleeve()</code> reports an error and builds
+nothing.
+</p>
+
+<h2>Primitives used by <code>sleeve()</code></h2>
+<p>
+The function builds the sleeve from <b>fifteen Part objects</b>: a body, two
+mirrored cut tools of five objects each, two profile cuts, the toleranced pin
+(built by the library&#8217;s own <code>pin_retained()</code>) and the final
+cut. The construction objects are hidden once the cuts are made. The names
+below use <code>name</code> for the argument passed to
+<code>sleeve()</code>.
+</p>
+<table>
+<tr><th>object</th><th>type</th><th>key properties</th><th>role</th></tr>
+<tr>
+  <td><code>{name}_body</code></td>
+  <td><code>Part::Cylinder</code></td>
+  <td><code>Radius = outer_rad</code>, <code>Height = h</code></td>
+  <td>plain outer body</td>
+</tr>
+<tr>
+  <td><code>{name}_bot_core</code></td>
+  <td><code>Part::Cone</code></td>
+  <td><code>Radius1 = a</code>, <code>Radius2 = 0</code>,
+      <code>Height = a</code>, base <code>(0, 0, 0)</code></td>
+  <td>bottom valley core (<code>r = a &#8722; z</code>)</td>
+</tr>
+<tr>
+  <td><code>{name}_bot_rim_cyl</code></td>
+  <td><code>Part::Cylinder</code></td>
+  <td><code>Radius = outer_rad</code>, <code>Height = fl</code>,
+      base <code>(0, 0, 0)</code></td>
+  <td>bottom rim wedge, outer half</td>
+</tr>
+<tr>
+  <td><code>{name}_bot_rim_cone</code></td>
+  <td><code>Part::Cone</code></td>
+  <td><code>Radius1 = a</code>, <code>Radius2 = outer_rad</code>,
+      <code>Height = fl</code>, base <code>(0, 0, 0)</code></td>
+  <td>bottom rim slope (<code>r = a + z</code>)</td>
+</tr>
+<tr>
+  <td><code>{name}_bot_rim</code></td>
+  <td><code>Part::Cut</code></td>
+  <td><code>bot_rim_cyl &#8722; bot_rim_cone</code></td>
+  <td>bottom rim wedge</td>
+</tr>
+<tr>
+  <td><code>{name}_bot_tool</code></td>
+  <td><code>Part::MultiFuse</code></td>
+  <td><code>Shapes = [bot_core, bot_rim]</code></td>
+  <td>removes <code>{ z &lt; |r &#8722; a| }</code></td>
+</tr>
+<tr>
+  <td><code>{name}_top_core</code></td>
+  <td><code>Part::Cone</code></td>
+  <td><code>Radius1 = 0</code>, <code>Radius2 = a</code>,
+      <code>Height = a</code>, base <code>(0, 0, h &#8722; a)</code></td>
+  <td>top valley core (<code>r = z &#8722; (h &#8722; a)</code>)</td>
+</tr>
+<tr>
+  <td><code>{name}_top_rim_cyl</code></td>
+  <td><code>Part::Cylinder</code></td>
+  <td><code>Radius = outer_rad</code>, <code>Height = fl</code>,
+      base <code>(0, 0, h &#8722; fl)</code></td>
+  <td>top rim wedge, outer half</td>
+</tr>
+<tr>
+  <td><code>{name}_top_rim_cone</code></td>
+  <td><code>Part::Cone</code></td>
+  <td><code>Radius1 = outer_rad</code>, <code>Radius2 = a</code>,
+      <code>Height = fl</code>, base <code>(0, 0, h &#8722; fl)</code></td>
+  <td>top rim slope (<code>r = a + (h &#8722; z)</code>)</td>
+</tr>
+<tr>
+  <td><code>{name}_top_rim</code></td>
+  <td><code>Part::Cut</code></td>
+  <td><code>top_rim_cyl &#8722; top_rim_cone</code></td>
+  <td>top rim wedge</td>
+</tr>
+<tr>
+  <td><code>{name}_top_tool</code></td>
+  <td><code>Part::MultiFuse</code></td>
+  <td><code>Shapes = [top_core, top_rim]</code></td>
+  <td>removes <code>{ z &gt; h &#8722; |r &#8722; a| }</code></td>
+</tr>
+<tr>
+  <td><code>{name}_profiled</code></td>
+  <td><code>Part::Cut</code></td>
+  <td><code>body &#8722; bot_tool</code></td>
+  <td>barrel, W bottom face</td>
+</tr>
+<tr>
+  <td><code>{name}_profiled_top</code></td>
+  <td><code>Part::Cut</code></td>
+  <td><code>profiled &#8722; top_tool</code></td>
+  <td>barrel, both end faces</td>
+</tr>
+<tr>
+  <td><code>{name}_internal_void</code></td>
+  <td><code>pin_retained()</code></td>
+  <td>the retained pin at <code>h</code>, <code>pd + 2&#183;tol</code>,
+      <code>rd + 2&#183;tol</code></td>
+  <td>the bore &#8212; the cut tool, not an edge where it is buried</td>
+</tr>
+<tr>
+  <td><code>{name}</code></td>
+  <td><code>Part::Cut</code></td>
+  <td><code>profiled_top &#8722; internal_void</code></td>
+  <td>the finished sleeve</td>
+</tr>
+</table>
+<p>
+Only two primitive kinds are needed &#8212; a cylinder
+(<code>Part::Cylinder</code>) and a cone (<code>Part::Cone</code>) &#8212;
+plus cuts and one <code>Part::MultiFuse</code> per end; the bore comes from
+<code>pin_retained(clearance=tol)</code>.
+</p>
+
+<h2>Parameters</h2>
+<table>
+<tr><th>symbol</th><th>name</th><th>value</th><th>note</th></tr>
+<tr><td><code>pd</code></td><td>pin shaft diameter (<code>diam</code>)</td><td>6.0&nbsp;mm</td><td>the shaft of the pin the sleeve rides</td></tr>
+<tr><td><code>rd</code></td><td>pin retain diameter (<code>diam_end</code>)</td><td>10.0&nbsp;mm</td><td>the widest part of the pin</td></tr>
+<tr><td><code>h</code></td><td>sleeve height (<code>height</code>)</td><td>10.0&nbsp;mm</td><td>one pin segment, <code>z = 0 .. h</code></td></tr>
+<tr><td><code>kd</code></td><td>sleeve outside diameter (<code>diam_outer</code>)</td><td>13.0&nbsp;mm</td><td>sets <code>outer_rad = kd/2</code>; the wall is derived, not a parameter</td></tr>
+<tr><td><code>tol</code></td><td>running clearance (<code>tolerance</code>)</td><td>0.1&nbsp;mm</td><td>bore minus pin, radial, on every face</td></tr>
+<tr><td><code>a</code></td><td>contact ring radius (<code>ridge_radius</code>)</td><td>5.8&nbsp;mm</td><td>defaults to <code>(flare_rad + outer_rad)/2</code></td></tr>
+</table>
+
+<h2>Derived geometry</h2>
+<table>
+<tr><th>symbol</th><th>meaning</th><th>expression</th><th>value</th></tr>
+<tr><td><code>outer_rad</code></td><td>sleeve outside radius (<code>kd/2</code>)</td><td><code>kd/2</code></td><td>6.50&nbsp;mm</td></tr>
+<tr><td><code>flare_rad</code></td><td>bore radius at the end faces</td><td><code>rd/2 + tol</code></td><td>5.10&nbsp;mm</td></tr>
+<tr><td><code>throat_rad</code></td><td>bore radius at the waist</td><td><code>pd/2 + tol</code></td><td>3.10&nbsp;mm</td></tr>
+<tr><td><code>a</code></td><td>contact ring radius (default)</td><td><code>(flare_rad + outer_rad)/2</code></td><td>5.80&nbsp;mm</td></tr>
+<tr><td><code>fl</code></td><td>45&#176; end-flank (rim) height</td><td><code>outer_rad &#8722; a</code></td><td>0.70&nbsp;mm</td></tr>
+<tr><td><code>c_b</code></td><td>bore cone height (end face &#8594; waist)</td><td><code>(rd &#8722; pd)/2</code></td><td>2.00&nbsp;mm</td></tr>
+</table>
+<p>
+The wall is derived, not a parameter:
+<code>kt = kd/2 &#8722; (rd/2 + tol) = 1.40&nbsp;mm</code>. Note
+<code>2a = 11.6&nbsp;mm &gt; h</code>: the two valley cones overlap through
+the middle of the part, which is why the bore flanks are read off the cut
+tools &#8212; not the pin void &#8212; near the ends.
+</p>
+
+<h2>Views</h2>
+<p>
+First-angle projection, delivered as two separate drawings: a <b>front
+view</b> (elevation, perpendicular to the pin axis) and a <b>top view</b>
+(plan, looking down the pin axis).
+</p>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 570" width="820" height="570" font-family="sans-serif">
+<rect x="0" y="0" width="820" height="570" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<style>path.ref{stroke:#777;stroke-width:1.0;stroke-dasharray:2 3;}</style>
+<defs><marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker><marker id="arwR" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker></defs>
+<text class="title" x="20.0" y="30.0">SLEEVE &#8212; FRONT VIEW (1st ANGLE)</text>
+<text class="subtitle" x="20.0" y="52.0">elevation &#183; solid of revolution &#183; 45&#176; W / inverted-W end faces &#183; mm</text>
+<path class="center" d="M300.0,74.0 L300.0,466.0"/>
+<path class="geo" d="M 79.0,416.2 L 102.8,440.0 L 497.2,440.0 L 521.0,416.2 L 521.0,123.8 L 497.2,100.0 L 102.8,100.0 L 79.0,123.8 Z"/>
+<path class="hidden" d="M102.8,440.0 L194.6,348.2"/>
+<path class="hidden" d="M194.6,348.2 L194.6,191.8"/>
+<path class="hidden" d="M194.6,191.8 L102.8,100.0"/>
+<path class="hidden" d="M497.2,440.0 L405.4,348.2"/>
+<path class="hidden" d="M405.4,348.2 L405.4,191.8"/>
+<path class="hidden" d="M405.4,191.8 L497.2,100.0"/>
+<path class="ref" d="M79.0,100.0 L89.0,100.0"/><path class="ref" d="M79.0,440.0 L89.0,440.0"/><path class="dim" d="M97.0,100.0 L97.0,440.0"/><path d="M97.0,100.0 L100.2,109.0 L93.8,109.0 Z" fill="#555"/><path d="M97.0,440.0 L93.8,431.0 L100.2,431.0 Z" fill="#555"/><text class="dimtxt" x="92.0" y="270.0" transform="rotate(-90 92.0 270.0)">h = 10</text>
+<path class="ref" d="M79.0,440.0 L79.0,500.0"/><path class="ref" d="M521.0,440.0 L521.0,500.0"/><path class="dim" d="M79.0,492.0 L521.0,492.0"/><path d="M79.0,492.0 L88.0,488.8 L88.0,495.2 Z" fill="#555"/><path d="M521.0,492.0 L512.0,495.2 L512.0,488.8 Z" fill="#555"/><text class="dimtxt" x="300.0" y="487.0">&#216;13 &#8212; kd</text>
+<path class="ref" d="M300.0,440.0 L300.0,530.0"/><path class="ref" d="M497.2,440.0 L497.2,530.0"/><path class="dim" d="M300.0,522.0 L497.2,522.0"/><path d="M300.0,522.0 L309.0,518.8 L309.0,525.2 Z" fill="#555"/><path d="M497.2,522.0 L488.2,525.2 L488.2,518.8 Z" fill="#555"/><text class="dimtxt" x="398.6" y="517.0">a = 5.8 &#8212; ridge</text>
+<path class="ref" d="M79.0,123.8 L79.0,86.0"/><path class="ref" d="M130.0,123.8 L130.0,86.0"/><path class="dim" d="M79.0,78.0 L130.0,78.0"/><path d="M79.0,78.0 L88.0,74.8 L88.0,81.2 Z" fill="#555"/><path d="M130.0,78.0 L121.0,81.2 L121.0,74.8 Z" fill="#555"/><text class="dimtxt" x="104.5" y="73.0">kt = 1.4</text>
+<path class="geo" d="M521.0,123.8 L521.0,135.8"/>
+<path class="geo" d="M521.0,123.8 L512.5,115.3"/>
+<path class="geo" d="M521.0,416.2 L521.0,404.2"/>
+<path class="geo" d="M521.0,416.2 L512.5,424.7"/>
+<text class="callout" x="493.0" y="145.8">45&#176;</text>
+<text class="callout" x="493.0" y="402.2">45&#176;</text>
+<path class="lead" d="M497.2,100.0 L566.0,72.0"/><path d="M497.2,100.0 L503.9,93.2 L506.7,99.0 Z" fill="#555"/><text class="callout" x="570.0" y="75.5">ridge ring r = a (z = h)</text>
+<path class="lead" d="M509.1,111.9 L566.0,160.0"/><path d="M509.1,111.9 L517.7,116.1 L513.1,120.6 Z" fill="#555"/><text class="callout" x="570.0" y="163.5">fl = 0.7 &#8212; 45&#176; end flanks</text>
+<path class="lead" d="M405.4,270.0 L566.0,250.0"/><path d="M405.4,270.0 L413.9,265.7 L414.7,272.0 Z" fill="#555"/><text class="callout" x="570.0" y="253.5">bore throat &#216;6.2 (pd + 2&#183;tol)</text>
+<path class="lead" d="M408.4,304.0 L566.0,380.0"/><path d="M408.4,304.0 L417.9,305.1 L415.1,310.8 Z" fill="#555"/><text class="callout" x="570.0" y="383.5">tol = 0.1 &#8212; clearance at the throat</text>
+<path class="lead" d="M497.2,440.0 L566.0,470.0"/><path d="M497.2,440.0 L506.7,441.3 L503.8,446.9 Z" fill="#555"/><text class="callout" x="570.0" y="473.5">valley ring r = a (z = 0)</text>
+<text class="foot" x="20.0" y="556.0">source: sleeve.py sleeve &#183; 1st-angle projection</text>
+</svg>
+<figcaption>Front view (elevation) &#183; <code>sleeve_front.svg</code>
+&#8212; viewed perpendicular to the pin axis.</figcaption>
+</figure>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 680" width="840" height="680" font-family="sans-serif">
+<rect x="0" y="0" width="840" height="680" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<defs><marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker><marker id="arwR" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker></defs>
+<text class="title" x="20.0" y="30.0">SLEEVE &#8212; TOP VIEW (1st ANGLE)</text>
+<text class="subtitle" x="20.0" y="52.0">plan &#183; looking down the pin axis &#183; mm</text>
+<circle class="geo" cx="340.0" cy="370.0" r="221.0" fill="none"/>
+<circle class="geo" cx="340.0" cy="370.0" r="197.2" fill="none"/>
+<circle class="hidden" cx="340.0" cy="370.0" r="105.4" fill="none"/>
+<path class="center" d="M84.0,370.0 L596.0,370.0"/>
+<path class="center" d="M340.0,114.0 L340.0,626.0"/>
+<path class="lead" d="M436.9,171.4 L640.0,180.0"/><path d="M436.9,171.4 L446.3,169.3 L445.5,175.7 Z" fill="#555"/><text class="callout" x="644.0" y="183.5">&#216;13 &#8212; kd (outer)</text>
+<path class="lead" d="M491.1,243.3 L640.0,262.0"/><path d="M491.1,243.3 L500.5,241.7 L499.4,248.0 Z" fill="#555"/><text class="callout" x="644.0" y="265.5">&#216;11.60 &#8212; ridge / bore mouth</text>
+<path class="lead" d="M442.3,395.5 L640.0,345.0"/><path d="M442.3,395.5 L450.2,390.1 L451.8,396.3 Z" fill="#555"/><text class="callout" x="644.0" y="348.5">&#216;6.2 &#8212; throat (pd+2&#183;tol)</text>
+<text class="note" x="20.0" y="656.0">outer / ridge / bore-mouth circles visible &#183; throat circle hidden</text>
+</svg>
+<figcaption>Top view (plan) &#183; <code>sleeve_top.svg</code> &#8212;
+viewed down the pin axis.</figcaption>
+</figure>
+
+<h2>Reading the views</h2>
+<ul>
+<li><b>Solid outline</b> &#8212; visible edges: the W bottom face, the
+inverted-W top face and the cylindrical wall between them.</li>
+<li>The <b>sharp corners</b> at <code>(&#177;a, 0)</code> and
+<code>(&#177;a, h)</code> &#8212; the valley and ridge rings where each
+45&#176; pair of flanks meets; the plan shows the ridge ring as the
+&#216;11.6 circle. Stacked sleeves touch only along that ring.</li>
+<li><b>Dashed</b> &#8212; the bore: the valley cones
+(<code>r = a &#8722; z</code>) opening into the throat cylinder. The
+toleranced pin&#8217;s flares never reach the sleeve wall, so they add no
+edges.</li>
+<li><b>The throat</b> &#216;(pd + 2&#183;tol) is what retains the sleeve on
+the pin: the pin&#8217;s flare (&#216;(rd + 2&#183;tol) with clearance)
+cannot pass it.</li>
+</ul>
+
+<p class="foot">
+The page embeds the drawings <code>sleeve_front.svg</code> and
+<code>sleeve_top.svg</code>, generated from the module&#8217;s parameters.
+</p>
+<hr class="sheet">
+
+<h1>Sleeve on the pin &#8212; fit section</h1>
+<p>
+The bore is cut by subtracting the retained pin grown by
+<code>tol</code> on every face &#8212;
+<code>pin_retained(clearance=tol)</code> &#8212; so the fit is exact by
+construction. The section below cuts the sleeve through the axis with the
+nominal retained pin (grey) inside it. Only the throat cylinder actually
+meets the bore wall; the pin&#8217;s flares ride in the valleys, parallel to
+the pin flanks at a radial gap of <code>fl</code>.
+</p>
+<table>
+<tr><th>feature</th><th>expression</th><th>value</th><th>note</th></tr>
+<tr><td>bore throat &#216;</td><td><code>pd + 2&#183;tol</code></td><td>6.20&nbsp;mm</td><td>the pin&#8217;s flare cannot pass this</td></tr>
+<tr><td>bore mouth &#216;</td><td><code>2a</code></td><td>11.60&nbsp;mm</td><td>the valley ring &#8212; the same circle as the ridge</td></tr>
+<tr><td>radial clearance</td><td><code>tol</code></td><td>0.10&nbsp;mm</td><td>pin &#8596; bore, at the throat</td></tr>
+<tr><td>valley/flank gap</td><td><code>fl = outer_rad &#8722; a</code></td><td>0.70&nbsp;mm</td><td>pin flares ride free in the valleys</td></tr>
+<tr><td>pin flare &#216;</td><td><code>rd + 2&#183;tol</code></td><td>10.20&nbsp;mm</td><td>widest part of the pin, buried in the valleys</td></tr>
+</table>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 590" width="820" height="590" font-family="sans-serif">
+<rect x="0" y="0" width="820" height="590" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<style>path.ref{stroke:#777;stroke-width:1.0;stroke-dasharray:2 3;}</style>
+<style>path.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1;}</style>
+<defs><marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker><marker id="arwR" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker></defs>
+<text class="title" x="20.0" y="30.0">SLEEVE ON THE PIN &#8212; FIT SECTION (1st ANGLE)</text>
+<text class="subtitle" x="20.0" y="52.0">meridian section &#183; sleeve (black) + retained pin (grey) &#183; tol = 0.1 mm radial &#183; mm</text>
+<path class="center" d="M330.0,94.0 L330.0,486.0"/>
+<path class="geo" d="M 109.0,436.2 L 132.8,460.0 L 527.2,460.0 L 551.0,436.2 L 551.0,143.8 L 527.2,120.0 L 132.8,120.0 L 109.0,143.8 Z"/>
+<path class="hidden" d="M132.8,460.0 L224.6,368.2"/>
+<path class="hidden" d="M224.6,368.2 L224.6,211.8"/>
+<path class="hidden" d="M224.6,211.8 L132.8,120.0"/>
+<path class="hidden" d="M527.2,460.0 L435.4,368.2"/>
+<path class="hidden" d="M435.4,368.2 L435.4,211.8"/>
+<path class="hidden" d="M435.4,211.8 L527.2,120.0"/>
+<path class="ghost" d="M 156.6,460.0 L 503.4,460.0 L 435.4,392.0 L 435.4,188.0 L 503.4,120.0 L 156.6,120.0 L 224.6,188.0 L 224.6,392.0 Z"/>
+<path class="ghost" d="M224.6,392.0 L435.4,392.0"/>
+<path class="ghost" d="M224.6,188.0 L435.4,188.0"/>
+<path class="ref" d="M109.0,120.0 L89.0,120.0"/><path class="ref" d="M109.0,460.0 L89.0,460.0"/><path class="dim" d="M97.0,120.0 L97.0,460.0"/><path d="M97.0,120.0 L100.2,129.0 L93.8,129.0 Z" fill="#555"/><path d="M97.0,460.0 L93.8,451.0 L100.2,451.0 Z" fill="#555"/><text class="dimtxt" x="92.0" y="290.0" transform="rotate(-90 92.0 290.0)">h = 10</text>
+<path class="ref" d="M109.0,460.0 L109.0,520.0"/><path class="ref" d="M551.0,460.0 L551.0,520.0"/><path class="dim" d="M109.0,512.0 L551.0,512.0"/><path d="M109.0,512.0 L118.0,508.8 L118.0,515.2 Z" fill="#555"/><path d="M551.0,512.0 L542.0,515.2 L542.0,508.8 Z" fill="#555"/><text class="dimtxt" x="330.0" y="507.0">&#216;13 &#8212; kd</text>
+<path class="ref" d="M224.6,460.0 L224.6,550.0"/><path class="ref" d="M435.4,460.0 L435.4,550.0"/><path class="dim" d="M224.6,542.0 L435.4,542.0"/><path d="M224.6,542.0 L233.6,538.8 L233.6,545.2 Z" fill="#555"/><path d="M435.4,542.0 L426.4,545.2 L426.4,538.8 Z" fill="#555"/><text class="dimtxt" x="330.0" y="537.0">&#216;6.2 &#8212; throat (pd+2&#183;tol)</text>
+<path class="lead" d="M527.2,120.0 L590.0,80.0"/><path d="M527.2,120.0 L532.4,112.0 L536.3,117.1 Z" fill="#555"/><text class="callout" x="594.0" y="83.5">ridge ring &#216;11.60 (2a)</text>
+<path class="lead" d="M435.4,324.0 L590.0,392.0"/><path d="M435.4,324.0 L444.9,324.8 L442.2,330.7 Z" fill="#555"/><text class="callout" x="594.0" y="395.5">tol = 0.1 &#8212; pin&#8596;bore (throat)</text>
+<path class="lead" d="M527.2,290.0 L590.0,330.0"/><path d="M527.2,290.0 L536.7,290.7 L534.1,296.6 Z" fill="#555"/><text class="callout" x="594.0" y="333.5">kt = 1.4 &#8212; wall over rd/2</text>
+<path class="lead" d="M224.6,188.0 L150.0,84.0"/><path d="M224.6,188.0 L216.9,182.3 L222.2,178.7 Z" fill="#555"/><text class="callout" x="154.0" y="87.5">retained pin (grey)</text>
+<text class="note" x="20.0" y="556.0">bore = valley cones + toleranced throat &#183; the pin flares ride free in the valleys &#183; retention is flare vs throat</text>
+<text class="foot" x="20.0" y="576.0">source: sleeve.py sleeve &#183; fit section &#183; 1st-angle projection</text>
+</svg>
+<figcaption>Fit section &#183; <code>sleeve_section.svg</code> &#8212;
+meridian section with the nominal retained pin inside it.</figcaption>
+</figure>
+
+<p class="foot">
+Built by the same call:
+<code>sleeve(doc, name, h, pd, rd, diam_outer=13.0, tolerance=0.1)</code>;
+the internal void is
+<code>pin_retained(doc, ..., h, pd + 2&#183;tol, rd + 2&#183;tol)</code>
+&#8212; the pin with <code>clearance=tol</code>.
+</p>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Panel — primlib</title><style>
+:root { --bg:#fff; --fg:#1d1d1f; --muted:#6e6e73; --line:#d2d2d7;
+        --panel:#f5f5f7; --solid:#9fb8d8; --edge:#2b5d9b; --axis:#c0392b;
+        --mate:#f0c48f; --mate-edge:#b35f12; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#161618; --fg:#ececf0; --muted:#9a9aa2; --line:#3a3a40;
+          --panel:#202024; --solid:#2f4a6e; --edge:#8db4e8; --axis:#e57368;
+          --mate:#7a4f22; --mate-edge:#f0b071; } }
+body { background:var(--bg); color:var(--fg); margin:0;
+       font:15px/1.55 system-ui, sans-serif; }
+main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:1.7rem; margin:0 0 4px; } h2 { font-size:1.15rem; margin:36px 0 8px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+p { margin:0 0 12px; } code { font:0.9em ui-monospace, monospace; }
+pre { background:var(--panel); padding:12px 14px; border-radius:6px; overflow-x:auto; }
+.wrap { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:0.92rem; }
+th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line);
+         vertical-align:top; }
+th { color:var(--muted); font-weight:600; }
+td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+figure { margin:0; background:var(--panel); border-radius:6px; padding:16px; }
+figcaption { color:var(--muted); font-size:0.88rem; margin-top:8px; }
+.row { display:flex; flex-wrap:wrap; gap:12px; }
+.row figure { flex:1 1 200px; }
+svg { display:block; max-width:100%; height:auto; margin:0 auto; }
+a { color:var(--edge); }
+</style></head><body><main><h1>Panel</h1><p class="sub"><code>primlib/primitives/panel.py</code> · class <code>Panel</code> · <a href="../../index.html">all primitives</a></p><p>A flat sheet <code>length</code> (x) by <code>width</code> (y), <code>thickness</code> (z) thick, its corner at the origin: a panel cut from plywood or other sheet, as the hybrid case&#x27;s walls are. It isn&#x27;t printed; an assembly turns it into place, so it is cut and listed lying flat.</p><h2>Parameters</h2><div class="wrap"><table><tr><th>name</th><th>default</th><th>note</th></tr><tr><td><code>length</code></td><td><code>300</code></td><td>size along x</td></tr><tr><td><code>width</code></td><td><code>200</code></td><td>size along y</td></tr><tr><td><code>thickness</code></td><td><code>6.5</code></td><td>the sheet&#x27;s thickness, along z</td></tr></table></div><h2>Shape</h2><figure><svg viewBox="0 0 662 452" width="662" role="img"><path d="M 16.00,16.00 L 16.00,436.00 L 646.00,436.00 L 646.00,16.00 L 16.00,16.00 Z" fill="var(--solid)" fill-rule="evenodd" stroke="var(--edge)" stroke-width="1.5" stroke-linejoin="round"/><polyline points="16.00,436.00 16.00,16.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="16.00,436.00 16.00,16.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="646.00,436.00 646.00,16.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="646.00,436.00 646.00,16.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="16.00,436.00 646.00,436.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="16.00,436.00 646.00,436.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="16.00,16.00 646.00,16.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/><polyline points="16.00,16.00 646.00,16.00" fill="none" stroke="var(--edge)" stroke-width="0.8"/></svg><figcaption>Plan view from above at the defaults: each solid's top face, with every edge below it drawn thin.</figcaption></figure><p></p><figure><svg viewBox="0 0 672 46" width="672" role="img"><path d="M 656.00,29.87 L 16.00,29.87 L 16.00,16.00 L 656.00,16.00 L 656.00,29.87 Z" fill="var(--solid)" fill-rule="evenodd" stroke="var(--edge)" stroke-width="1.5" stroke-linejoin="round"/></svg><figcaption>Section at y = 100, looking along +y.</figcaption></figure><h2>Valid range</h2><p>Checked when the primitive is built; later edits to the sheet are not checked.</p><div class="wrap"><table><tr><th>must be &gt; 0</th><th>otherwise</th></tr><tr><td><code>length</code></td><td>length must be positive</td></tr><tr><td><code>width</code></td><td>width must be positive</td></tr><tr><td><code>thickness</code></td><td>thickness must be positive</td></tr></table></div><h2>Use</h2><pre><code>import primlib
+# appended to the document's Params sheet under "Panel: Panel",
+# aliases Panel_length, Panel_width, ...
+obj = primlib.make("panel", doc, "Panel")
+obj = primlib.make("panel", doc, "Panel", length=&#x27;300&#x27;, width=&#x27;200&#x27;)   # starting values
+
+# into another sheet, or with plain shared aliases (length, ...)
+obj = primlib.make("panel", doc, "Panel", sheet=sheet)
+obj = primlib.make("panel", doc, "Panel", prefix="")
+
+# or drive params from expressions you already have
+obj = primlib.make("panel", doc, "Panel", sheet=sheet,
+                 bind={"length": "MyAlias * 2"})</code></pre><p>In the FreeCAD GUI: the <b>primlib</b> workbench has a button for <b>Panel</b>. Its parameters are appended to the document's <code>Params</code> sheet under a title row, or to the selected spreadsheet if one is selected.</p><p>Objects created: the spreadsheet rows, the hidden helper objects described above, and the result <code>&lt;name&gt;</code>, tagged <code>PrimlibPrimitive = "panel"</code>. They are plain FreeCAD objects: the saved file does not need primlib.</p></main></body></html>

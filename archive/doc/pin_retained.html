@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retained Pin &#8212; Specification &amp; Drawings</title>
+<style>
+:root{--ink:#1a1a24;--acc:#2b5b84;--bg:#ffffff;--soft:#f4f6f9;--mut:#5c6472;--line:#d9dee5}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--soft);line-height:1.55}
+main{max-width:1060px;margin:0 auto;background:var(--bg);padding:40px 52px 90px;box-shadow:0 0 24px rgba(0,0,0,.08)}
+h1{font-size:1.9em;margin:.2em 0 .1em}
+h2{font-size:1.45em;border-bottom:2px solid var(--line);padding-bottom:.25em;margin-top:1.7em;color:var(--acc)}
+h3{font-size:1.13em;margin:1.3em 0 .2em;color:var(--acc)}
+code{background:#eef1f5;border:1px solid var(--line);border-radius:4px;padding:0 .3em;font-size:.9em;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{background:#eef1f5;border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow:auto;font-size:.82em;line-height:1.5;margin:.8em 0 1.4em}
+pre code{background:none;border:0;padding:0;font-size:1em}
+table{border-collapse:collapse;width:100%;margin:.6em 0 1.2em;font-size:.92em}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+a{color:var(--acc)}
+figure{margin:1.4em 0 2em;padding:14px;border:1px solid var(--line);border-radius:8px;background:#fff}
+figure svg{width:100%;height:auto;display:block}
+figure.example img{width:100%;max-width:380px;height:auto;display:block;margin:0 auto}
+figcaption{font-size:.9em;color:var(--mut);margin-top:.55em;text-align:center}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:860px){main{padding:22px 14px 60px}.fig-grid{grid-template-columns:1fr}}
+.foot{margin-top:2.5em;padding-top:1em;border-top:1px solid var(--line);color:var(--mut);font-size:.85em}
+hr.sheet{border:0;border-top:2px dashed var(--line);margin:3.5em -52px}
+legend,.legend{font-size:.85em;color:var(--mut)}
+.swatch{display:inline-block;width:1.6em;height:0;border-top:2px solid #b3bac3;vertical-align:middle;margin:0 .3em}
+.swatch.ovr{border-color:#c0392b}
+@media print{hr.sheet{page-break-before:always;border:0;margin:0}figure{break-inside:avoid}}
+</style>
+</head>
+<body>
+<main>
+<h1>Retained pin</h1>
+<p>
+The retained pin is a cylindrical shaft with a splayed <b>flare</b> (cone) at
+each end that traps a mating collar axially. Once the collar is snapped over
+the pin the flare prevents it sliding off &#8212; hence <i>retained</i>. The
+pin is a <b>solid of revolution</b>, so an elevation and a plan describe it
+fully. These are first-angle projections; the flare cone angle is the real
+parameter <code>angle</code> (<code>p_ang</code>).
+</p>
+<p class="foot">
+This page is the <b>single source of truth</b> for the retained pin. The part
+lives in the parts library <code>fc_lib</code> as the self-contained module
+<code>pin_retained.py</code>; other notes point here rather than duplicate it.
+</p>
+
+<h2>Module</h2>
+<p>
+The part is built by <code>pin_retained()</code> in
+<code>fc_lib/pin_retained.py</code>, a self-contained FreeCAD module with no
+dependencies beyond the FreeCAD core. Two signatures: the first is the base
+pin; the second adds the real flare angle <code>p_ang</code> (the module&#8217;s
+<code>angle</code> parameter) and an optional <code>clearance</code> (the
+lowest-priority parameter, listed last).
+</p>
+<pre><code>def pin_retained(doc, name, height, diam, diam_end):
+    """Retained pin: a shaft `diam` with a 45&#176; flare `diam_end` at
+    each end, `height` tall (z = 0 .. height)."""
+
+
+def pin_retained(doc, name, height, diam, diam_end,
+                 angle=45.0, clearance=0.0):
+    """`angle` is the flare flank angle (p_ang, degrees). `clearance`
+    (mm, optional) pushes every face out along its own outward normal,
+    giving the overdimensioned envelope the pin must clear in a bore."""</code></pre>
+<p>
+Typical use from a script or the FreeCAD Python console:
+</p>
+<pre><code>import sys
+sys.path.insert(0, "&lt;path to&gt;/fc_lib")
+import FreeCAD as App
+from pin_retained import pin_retained
+
+doc = App.newDocument()
+pin = pin_retained(doc, "Pin", height=10.0, diam=6.0, diam_end=10.0)
+doc.recompute()</code></pre>
+<p>
+The module also offers a <b>solid-of-revolution</b> route through
+<code>profile_points()</code>, <code>profile_sketch()</code> and
+<code>pin_retained_revolved()</code>, which builds the pin as a sketched
+meridian profile revolved about the <i>z</i> axis &#8212; see Method 3 under
+Construction.
+</p>
+<p>
+Run the module directly (<code>freecadcmd pin_retained.py</code>) to build an
+inspection document: a solid block spanning <i>x</i> = &#177;3&#183;<code>rd</code>
+and <i>z</i> = &#177;2&#183;<code>h</code>, but only on the +y side
+(<i>y</i> = 0 &hellip; 3&#183;<code>rd</code>), hollowed by the clearance envelope
+with the complete nominal pin in the cavity. The block&#8217;s <i>y</i> = 0 face
+reads as a section of the clearance pin around the main pin. The envelope is
+built from <i>z</i> = 0 like any pin, so it is dropped by <code>c</code> before
+the cut to centre it on the nominal pin.
+</p>
+
+<h2>Construction</h2>
+<p>
+The pin is a <b>solid of revolution</b>, and there are two equivalent ways to
+build it. The model uses the first (tapered frustums); the second (complete
+cones) gives the identical solid and is often easier to reason about.
+</p>
+
+<h3>Method 1 &#8212; tapered frustums (as modelled)</h3>
+<p>
+The union of three coaxial solids. Where they meet there is a small overlap, but
+that is irrelevant in a union, so the primitives need not abut exactly.
+</p>
+<ol>
+<li><b>Bottom cone (frustum)</b> &#8212; <code>R1 = rd/2</code> at
+    <code>z = 0</code>, tapering to <code>R2 = pd/2</code> at <code>z = c</code>.</li>
+<li><b>Shaft cylinder</b> &#8212; radius <code>pd/2</code>, spanning
+    <code>z = c</code> to <code>z = h &#8722; c</code>.</li>
+<li><b>Top cone (frustum)</b> &#8212; <code>R1 = pd/2</code> at
+    <code>z = h &#8722; c</code>, opening to <code>R2 = rd/2</code> at
+    <code>z = h</code>.</li>
+</ol>
+<p>
+In the model (<code>pin_retained()</code> in <code>pin_retained.py</code>) these are a
+<code>Part::Cone</code>, a <code>Part::Cylinder</code> and a second
+<code>Part::Cone</code>, combined with <code>Part::MultiFuse</code>. The lowest
+boundary sits at <code>z = 0</code> and the highest at <code>z = h</code>.
+</p>
+
+<h3>Method 2 &#8212; complete cones</h3>
+<p>
+The same solid built from two <b>complete (sharp) cones</b> whose apexes lie on
+the axis, plus one full-height shaft cylinder. Each complete cone runs unbroken
+from an end face to its own apex; past the cone/cylinder junction its tip is
+narrower than the shaft and is simply absorbed by the union.
+</p>
+<ol>
+<li><b>Complete bottom cone</b> &#8212; <code>R1 = rd/2</code> at
+    <code>z = 0</code>, apex (<code>R2 = 0</code>) at <code>z = ca</code>.</li>
+<li><b>Shaft cylinder</b> &#8212; radius <code>pd/2</code>, full height,
+    <code>z = 0</code> to <code>z = h</code>.</li>
+<li><b>Complete top cone</b> &#8212; apex (<code>R1 = 0</code>) at
+    <code>z = h &#8722; ca</code>, <code>R2 = rd/2</code> at <code>z = h</code>.</li>
+</ol>
+<p>
+Because the shaft spans the full height and each cone tip is narrower than it,
+the union repeats Method 1&#8217;s profile exactly: the flank from
+<code>rd/2</code> down to <code>pd/2</code> over <code>z = 0..c</code>, the
+straight shaft in the middle, and the mirrored top flank. The two methods differ
+only in where the primitives are trimmed &#8212; by an explicit frustum height
+<code>c</code> in Method 1, or by the union itself in Method 2.
+</p>
+<p>
+<code>p_ang</code> (the module&#8217;s <code>angle</code> parameter) is the <b>real parameter</b>:
+every cone dimension and every flank position in the drawings is derived from it.
+Changing <code>p_ang</code> moves the flanks, the cone/cylinder junction edges,
+the completed-cone apexes and the cone-height dimension together.
+</p>
+<p>
+The flank of each end, extended inward, reaches the axis at that end&#8217;s own
+apex &#8212; the bottom apex at <code>z = ca</code>, the top apex at
+<code>z = h &#8722; ca</code>. They coincide only when <code>h = 2&#183;ca</code>
+(true for the <code>h = 10&nbsp;mm</code> default, not for the 20&nbsp;mm sample
+drawn here).
+</p>
+<p>
+<b>Valid range:</b> <code>0 &lt; p_ang &lt; 90</code> (the flank must slope),
+<code>rd &gt; pd</code> (the cone height must be positive)
+and <code>h &gt; 2&#183;c</code> (the shaft length must be positive). Outside
+that range <code>pin_retained()</code> reports an error and builds nothing.
+</p>
+
+<h3>Method 3 &#8212; revolve of the sketch profile</h3>
+<p>
+The pin is already a solid of revolution, so it can be built directly as one:
+draw its meridian <b>sketch</b> in the XZ half-plane and revolve it 360&#176;
+about the <i>z</i> axis. The module exposes this route as three functions:
+</p>
+<pre><code>profile_points(height, diam, diam_end, angle=45.0, clearance=0.0)
+    -&gt; the six profile vertices P0..P5 as App.Vector (x, 0, z)
+
+profile_sketch(doc, name, height, diam, diam_end,
+               angle=45.0, clearance=0.0)
+    -&gt; the profile as a Sketcher sketch in the XZ plane
+
+pin_retained_revolved(doc, name, height, diam, diam_end,
+                      angle=45.0, clearance=0.0)
+    -&gt; the same pin as a Part::Revolution about the z axis</code></pre>
+<p>
+The profile is a closed six-point polyline; the closing segment lies on the
+axis, so the revolved solid is closed. Vertices are
+<code>(x, y, z)</code> with <code>y = 0</code> throughout:
+</p>
+<pre><code>P0 = (0,      0, 0)       axis, bottom
+P1 = (rd'/2,  0, 0)       bottom end face -&gt; flare rim
+P2 = (pd'/2,  0, c')      flare flank -&gt; shaft
+P3 = (pd'/2,  0, h'-c')   shaft -&gt; top flare
+P4 = (rd'/2,  0, h')      flare flank -&gt; top rim
+P5 = (0,      0, h')      top end face -&gt; axis</code></pre>
+<p>
+with the clearance-grown values (<code>h' = h + 2c</code>,
+<code>pd' = pd + 2c</code>,
+<code>rd' = rd + 2c / tan(p_ang/2)</code>,
+<code>c' = (rd'/2 &#8722; pd'/2)&#183;tan(p_ang)</code>; primes drop when
+<code>c = 0</code>). The result is identical to Methods 1 and 2 &#8212; same
+volume, same bounding box &#8212; and updates by editing the sketch in the
+GUI.
+</p>
+
+<h2>Primitives used by <code>pin_retained()</code></h2>
+<p>
+The function builds the pin from <b>three Part primitives united by a fourth
+object</b>. The names below use <code>name</code> for the argument passed to
+<code>pin_retained()</code>; the three construction solids are hidden once the
+union is made.
+</p>
+<table>
+<tr><th>object</th><th>type</th><th>key properties</th><th>role</th></tr>
+<tr>
+  <td><code>{name}_bottom</code></td>
+  <td><code>Part::Cone</code></td>
+  <td><code>Radius1 = rd/2</code>, <code>Radius2 = pd/2</code>,
+      <code>Height = c</code>, base <code>(0, 0, 0)</code></td>
+  <td>bottom flare (frustum)</td>
+</tr>
+<tr>
+  <td><code>{name}_shaft</code></td>
+  <td><code>Part::Cylinder</code></td>
+  <td><code>Radius = pd/2</code>, <code>Height = ls = h &#8722; 2c</code>,
+      base <code>(0, 0, c)</code></td>
+  <td>straight shaft</td>
+</tr>
+<tr>
+  <td><code>{name}_top</code></td>
+  <td><code>Part::Cone</code></td>
+  <td><code>Radius1 = pd/2</code>, <code>Radius2 = rd/2</code>,
+      <code>Height = c</code>, base <code>(0, 0, c + ls)</code></td>
+  <td>top flare (frustum)</td>
+</tr>
+<tr>
+  <td><code>{name}</code></td>
+  <td><code>Part::MultiFuse</code></td>
+  <td><code>Shapes = [shaft, bottom, top]</code></td>
+  <td>the union &#8212; the finished pin</td>
+</tr>
+</table>
+<p>
+So the whole part needs only two primitive kinds &#8212; a cone
+(<code>Part::Cone</code>, which is a frustum whenever both radii are non-zero)
+and a cylinder (<code>Part::Cylinder</code>) &#8212; plus a single boolean union
+(<code>Part::MultiFuse</code>). Method 2 above is the same three primitives with
+<code>Radius2 = 0</code> (a complete cone) and a full-height shaft.
+</p>
+<p>
+<code>pin_retained()</code> simply calls <code>doc.addObject()</code> directly;
+the module has no dependencies beyond the FreeCAD core, so it can be dropped
+into any project that needs the part.
+</p>
+
+<h2>Parameters</h2>
+<table>
+<tr><th>symbol</th><th>name</th><th>value</th><th>note</th></tr>
+<tr><td><code>pd</code></td><td>pin (shaft) diameter</td><td>6.0&nbsp;mm</td><td>straight central shaft</td></tr>
+<tr><td><code>rd</code></td><td>retain (flare) diameter</td><td>10.0&nbsp;mm</td><td>outer diameter at each end face</td></tr>
+<tr><td><code>h</code></td><td>overall pin height</td><td>20.0&nbsp;mm</td><td>end face to end face (sample)</td></tr>
+<tr><td><code>p_ang</code></td><td>flare flank angle (<code>angle</code>)</td><td>45&#176;</td><td>flare flank angle to the end face</td></tr>
+<tr><td><code>c</code></td><td>clearance (<code>clearance</code>)</td><td>0.10&nbsp;mm</td><td>optional; pushes every face out along its own normal</td></tr>
+</table>
+
+<h2>Derived geometry</h2>
+<table>
+<tr><th>symbol</th><th>meaning</th><th>expression</th><th>value</th></tr>
+<tr><td><code>c</code></td><td>visible cone (frustum) height</td><td><code>(rd/2 &#8722; pd/2)&#183;tan(p_ang)</code></td><td>2.0&nbsp;mm</td></tr>
+<tr><td><code>ls</code></td><td>straight shaft length</td><td><code>h &#8722; 2c</code></td><td>16.0&nbsp;mm</td></tr>
+<tr><td><code>ca</code></td><td>complete-cone height (end face &#8594; apex)</td><td><code>(rd/2)&#183;tan(p_ang)</code></td><td>5.0&nbsp;mm</td></tr>
+</table>
+<p>
+The module&#8217;s default is <code>h = 10&nbsp;mm</code>; the views on this
+page use the 20&nbsp;mm sample.
+</p>
+
+<h2>Views</h2>
+<p>
+First-angle projection, delivered as two separate drawings: a <b>front view</b>
+(elevation, perpendicular to the axis) and a <b>top view</b> (plan, looking down
+the pin axis).
+</p>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 910" width="700" height="910" font-family="sans-serif">
+<rect x="0" y="0" width="700" height="910" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<style>path.ref{stroke:#777;stroke-width:1.0;stroke-dasharray:2 3;}</style>
+<defs><marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker><marker id="arwR" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker></defs>
+<text class="title" x="20.0" y="30.0">RETAINED PIN &#8212; FRONT VIEW (1st ANGLE)</text>
+<text class="subtitle" x="20.0" y="52.0">elevation &#183; solid of revolution &#183; p_ang = angle = 45&#176; &#183; mm</text>
+<path class="center" d="M300.0,74.0 L300.0,806.0"/>
+<path class="geo" d="M 130.0,780.0 L 470.0,780.0 L 402.0,712.0 L 402.0,168.0 L 470.0,100.0 L 130.0,100.0 L 198.0,168.0 L 198.0,712.0 Z"/>
+<path class="geo" d="M198.0,712.0 L402.0,712.0"/>
+<path class="geo" d="M198.0,168.0 L402.0,168.0"/>
+<path class="ref" d="M198.0,780.0 L198.0,712.0"/>
+<path class="ref" d="M198.0,168.0 L198.0,100.0"/>
+<path class="ref" d="M402.0,780.0 L402.0,712.0"/>
+<path class="ref" d="M402.0,168.0 L402.0,100.0"/>
+<path class="ref" d="M198.0,712.0 L300.0,610.0"/>
+<path class="ref" d="M402.0,712.0 L300.0,610.0"/>
+<path class="ref" d="M198.0,168.0 L300.0,270.0"/>
+<path class="ref" d="M402.0,168.0 L300.0,270.0"/>
+<path class="ref" d="M300.0,610.0 L616.0,610.0"/>
+<path class="ref" d="M470.0,780.0 L616.0,780.0"/>
+<path class="dim" d="M600.0,610.0 L600.0,780.0"/><path d="M600.0,610.0 L603.2,619.0 L596.8,619.0 Z" fill="#555"/><path d="M600.0,780.0 L596.8,771.0 L603.2,771.0 Z" fill="#555"/><text class="dimtxt" x="595.0" y="695.0" transform="rotate(-90 595.0 695.0)">cone h = 5.0</text>
+<path class="ref" d="M300.0,270.0 L616.0,270.0"/>
+<path class="ref" d="M470.0,100.0 L616.0,100.0"/>
+<path class="dim" d="M600.0,100.0 L600.0,270.0"/><path d="M600.0,100.0 L603.2,109.0 L596.8,109.0 Z" fill="#555"/><path d="M600.0,270.0 L596.8,261.0 L603.2,261.0 Z" fill="#555"/><text class="dimtxt" x="595.0" y="185.0" transform="rotate(-90 595.0 185.0)">cone h = 5.0</text>
+<path class="ref" d="M130.0,100.0 L72.0,100.0"/><path class="ref" d="M130.0,780.0 L72.0,780.0"/><path class="dim" d="M80.0,100.0 L80.0,780.0"/><path d="M80.0,100.0 L83.2,109.0 L76.8,109.0 Z" fill="#555"/><path d="M80.0,780.0 L76.8,771.0 L83.2,771.0 Z" fill="#555"/><text class="dimtxt" x="75.0" y="440.0" transform="rotate(-90 75.0 440.0)">h = 20</text>
+<path class="ref" d="M198.0,712.0 L198.0,840.0"/><path class="ref" d="M402.0,712.0 L402.0,840.0"/><path class="dim" d="M198.0,832.0 L402.0,832.0"/><path d="M198.0,832.0 L207.0,828.8 L207.0,835.2 Z" fill="#555"/><path d="M402.0,832.0 L393.0,835.2 L393.0,828.8 Z" fill="#555"/><text class="dimtxt" x="300.0" y="827.0">&#216;6 &#8212; pd</text>
+<path class="ref" d="M130.0,780.0 L130.0,870.0"/><path class="ref" d="M470.0,780.0 L470.0,870.0"/><path class="dim" d="M130.0,862.0 L470.0,862.0"/><path d="M130.0,862.0 L139.0,858.8 L139.0,865.2 Z" fill="#555"/><path d="M470.0,862.0 L461.0,865.2 L461.0,858.8 Z" fill="#555"/><text class="dimtxt" x="300.0" y="857.0">&#216;10 &#8212; rd</text>
+<path class="dim" marker-start="url(#arwR)" marker-end="url(#arw)" d="M408.0,780.0 A62,62 0 0,1 426.2,736.2"/>
+<text class="dimtxt" text-anchor="middle" x="394.2" y="752.6">p_ang</text>
+<text class="foot" x="20.0" y="896.0">source: pin_retained.py pin_retained &#183; 1st-angle projection</text>
+</svg>
+<figcaption>Front view (elevation) &#183; <code>pin_retained_front.svg</code> &#8212; viewed perpendicular to the pin axis.</figcaption>
+</figure>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" width="720" height="520" font-family="sans-serif">
+<rect x="0" y="0" width="720" height="520" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<text class="title" x="20.0" y="30.0">RETAINED PIN &#8212; TOP VIEW (1st ANGLE)</text>
+<text class="subtitle" x="20.0" y="52.0">plan &#183; looking down the pin axis &#183; mm</text>
+<circle class="geo" cx="340.0" cy="270.0" r="170.0" fill="none"/>
+<circle class="hidden" cx="340.0" cy="270.0" r="102.0" fill="none"/>
+<path class="center" d="M152.0,270.0 L528.0,270.0"/>
+<path class="center" d="M340.0,82.0 L340.0,458.0"/>
+<path class="lead" d="M437.5,130.7 L540.0,200.0"/><path d="M437.5,130.7 L446.8,133.1 L443.2,138.4 Z" fill="#555"/><text class="callout" x="544.0" y="203.5">&#216;10.0 &#8212; rd (flare)</text>
+<path class="lead" d="M418.1,335.6 L540.0,320.0"/><path d="M418.1,335.6 L426.7,331.2 L427.5,337.6 Z" fill="#555"/><text class="callout" x="544.0" y="323.5">&#216;6.0 &#8212; pd (hidden)</text>
+</svg>
+<figcaption>Top view (plan) &#183; <code>pin_retained_top.svg</code> &#8212; viewed down the pin axis.</figcaption>
+</figure>
+
+<h2>Reading the views</h2>
+<ul>
+<li><b>Solid outline</b> &#8212; visible edges.</li>
+<li><b>Solid horizontal lines</b> in the front view &#8212; the cone/cylinder junction circles (a true first-angle view, not a section).</li>
+<li><b>Dashed</b> &#8212; hidden edges (the shaft circle inside the flare in the top view).</li>
+<li><b>Dotted (<code>ref</code>)</b> &#8212; construction/completion lines: the flanks extended to each cone&#8217;s own apex, and the shaft cylinder completed over the full pin height (its wall is buried inside the wider end cones there). Dotted lines also carry every dimension.</li>
+<li>Each complete cone reaches the axis at its own apex &#8212; bottom at <code>z = ca</code>, top at <code>z = h &#8722; ca</code> &#8212; which coincide only when <code>h = 2&#183;ca</code>.</li>
+</ul>
+
+<p class="foot">
+The page embeds the drawings <code>pin_retained_front.svg</code> and
+<code>pin_retained_top.svg</code>, generated from the module&#8217;s parameters.
+</p>
+<hr class="sheet">
+
+<h1>Retained pin &#8212; clearance-included version</h1>
+<p>
+This page repeats both views for an <b>overdimensioned</b> pin. Starting from the
+nominal geometry, every surface is pushed out along its own outward normal by a
+clearance <code>c = 0.10&nbsp;mm</code>; where two offset faces meet &#8212; the
+end rims &#8212; they are extended to a sharp corner. The result is the
+nominal-plus-clearance envelope: the volume the pin must be clear of to ride in a
+bore with that clearance.
+</p>
+<p class="legend">
+<span class="swatch"></span>nominal pin &nbsp;&#183;&nbsp; <span class="swatch ovr"></span>clearance envelope (+c normal to every face)
+</p>
+<p>
+The module builds exactly this envelope in one call: the
+<code>clearance</code> parameter grows the pin to
+<code>h&#8242; = h + 2c</code>, <code>pd&#8242; = pd + 2c</code> and
+<code>rd&#8242; = rd + 2c&#183;cot(p_ang/2)</code>, keeping the same flank
+angle <code>p_ang</code>.
+</p>
+<table>
+<tr><th>feature</th><th>growth</th><th>expression</th><th>value</th></tr>
+<tr><td>end (retain) &#216;</td><td>rim, radial</td><td><code>2c&#183;cot(p_ang/2)</code></td><td>+0.48&nbsp;mm &#8594; &#216;10.48</td></tr>
+<tr><td>waist (shaft) &#216;</td><td>radial</td><td><code>2c</code></td><td>+0.20&nbsp;mm &#8594; &#216;6.20</td></tr>
+<tr><td>overall height</td><td>axial (each face)</td><td><code>2c</code></td><td>+0.20&nbsp;mm &#8594; 20.20</td></tr>
+<tr><td>cone/cylinder junction</td><td>axial shift</td><td><code>c&#183;tan(45&#176;&#8722;p_ang/2)</code></td><td>+0.04&nbsp;mm</td></tr>
+</table>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 950" width="760" height="950" font-family="sans-serif">
+<rect x="0" y="0" width="760" height="950" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<style>path.ref{stroke:#777;stroke-width:1.0;stroke-dasharray:2 3;}</style>
+<style>path.ovr{fill:none;stroke:#c0392b;stroke-width:1.7;}path.ovrj{fill:none;stroke:#c0392b;stroke-width:1.2;}path.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1;}circle.ovr{fill:none;stroke:#c0392b;stroke-width:1.7;}circle.ovrh{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:6 4;}circle.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1;}circle.ghosth{fill:none;stroke:#b3bac3;stroke-width:1.1;stroke-dasharray:6 4;}</style>
+<text class="title" x="20.0" y="30.0">RETAINED PIN &#8212; FRONT VIEW (CLEARANCE INCLUDED)</text>
+<text class="subtitle" x="20.0" y="52.0">nominal pin (grey) + overdimensioned envelope (red) &#183; every face +c along its normal &#183; c = 0.10 mm &#183; p_ang = 45&#176; &#183; mm</text>
+<path class="center" d="M320.0,84.0 L320.0,826.2"/>
+<path class="ghost" d="M 150.0,795.1 L 490.0,795.1 L 422.0,727.1 L 422.0,183.1 L 490.0,115.1 L 150.0,115.1 L 218.0,183.1 L 218.0,727.1 Z"/>
+<path class="ghost" d="M218.0,727.1 L422.0,727.1"/>
+<path class="ghost" d="M218.0,183.1 L422.0,183.1"/>
+<path class="ovr" d="M 141.8,798.5 L 498.2,798.5 L 425.4,725.7 L 425.4,184.5 L 498.2,111.7 L 141.8,111.7 L 214.6,184.5 L 214.6,725.7 Z"/>
+<path class="ovrj" d="M214.6,725.7 L425.4,725.7"/>
+<path class="ovrj" d="M214.6,184.5 L425.4,184.5"/>
+<path class="ref" d="M141.8,111.7 L72.0,111.7"/><path class="ref" d="M141.8,798.5 L72.0,798.5"/><path class="dim" d="M80.0,111.7 L80.0,798.5"/><path d="M80.0,111.7 L83.2,120.7 L76.8,120.7 Z" fill="#555"/><path d="M80.0,798.5 L76.8,789.5 L83.2,789.5 Z" fill="#555"/><text class="dimtxt" x="75.0" y="455.1" transform="rotate(-90 75.0 455.1)">h+2c = 20.2</text>
+<path class="ref" d="M214.6,725.7 L214.6,860.2"/><path class="ref" d="M425.4,725.7 L425.4,860.2"/><path class="dim" d="M214.6,852.2 L425.4,852.2"/><path d="M214.6,852.2 L223.6,849.0 L223.6,855.4 Z" fill="#555"/><path d="M425.4,852.2 L416.4,855.4 L416.4,849.0 Z" fill="#555"/><text class="dimtxt" x="320.0" y="847.2">&#216;6.20 &#8212; pd+2c</text>
+<path class="ref" d="M141.8,798.5 L141.8,890.2"/><path class="ref" d="M498.2,798.5 L498.2,890.2"/><path class="dim" d="M141.8,882.2 L498.2,882.2"/><path d="M141.8,882.2 L150.8,879.0 L150.8,885.4 Z" fill="#555"/><path d="M498.2,882.2 L489.2,885.4 L489.2,879.0 Z" fill="#555"/><text class="dimtxt" x="320.0" y="877.2">&#216;10.48 &#8212; rd+2c&#183;cot(p/2)</text>
+<path class="lead" d="M492.1,839.4 L604.0,891.1"/><path d="M492.1,839.4 L501.6,840.3 L498.9,846.1 Z" fill="#555"/><text class="callout" x="608.0" y="894.6">c = 0.10 mm &#8212; normal to each face</text>
+<text class="note" x="20.0" y="916.0">rim corners extended (sharp); waist junction shifts by c&#183;tan(45&#176;&#8722;p_ang/2)</text>
+<text class="foot" x="20.0" y="936.0">source: pin_retained.py pin_retained &#183; clearance envelope &#183; 1st-angle projection</text>
+</svg>
+<figcaption>Front view with clearance &#183; <code>pin_retained_clearance_front.svg</code>.</figcaption>
+</figure>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 560" width="760" height="560" font-family="sans-serif">
+<rect x="0" y="0" width="760" height="560" fill="#ffffff"/>
+
+<style>
+ path.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;stroke-linejoin:round;}
+ path.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4;}
+ circle.geo{fill:none;stroke:#1a1a1a;stroke-width:1.5;}
+ circle.hidden{fill:none;stroke:#8a8a8a;stroke-width:1.1;stroke-dasharray:6 4;}
+ path.dim{fill:none;stroke:#666;stroke-width:1.1;}
+ path.lead{fill:none;stroke:#777;stroke-width:1.1;}
+ path.ref{fill:none;stroke:#9aa;stroke-width:1.1;stroke-dasharray:2 3;}
+ path.panelrule{fill:none;stroke:#bbb;stroke-width:1;}
+ text.title{font-size:20;font-weight:bold;fill:#111;}
+ text.subtitle{font-size:12.5;fill:#555;}
+ text.viewlbl{font-size:16;font-weight:bold;fill:#111;text-anchor:middle;}
+ text.dimtxt{font-size:12;fill:#555;text-anchor:middle;}
+ text.callout{font-size:11.5;fill:#444;}
+ text.panelhdr{font-size:18;font-weight:bold;fill:#111;}
+ text.tblhead{font-size:12;font-weight:bold;fill:#777;}
+ text.tblsym{font-size:13.5;font-weight:bold;fill:#0b6fa4;}
+ text.tbl{font-size:13;fill:#333;}
+ text.tblval{font-size:13;fill:#111;}
+ text.tblnote{font-size:11;fill:#777;}
+ text.note{font-size:12;fill:#444;}
+ text.caption{font-size:11;font-weight:bold;fill:#666;text-anchor:middle;}
+ text.foot{font-size:12;fill:#888;}
+</style>
+<style>path.ovr{fill:none;stroke:#c0392b;stroke-width:1.7;}path.ovrj{fill:none;stroke:#c0392b;stroke-width:1.2;}path.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1;}circle.ovr{fill:none;stroke:#c0392b;stroke-width:1.7;}circle.ovrh{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:6 4;}circle.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1;}circle.ghosth{fill:none;stroke:#b3bac3;stroke-width:1.1;stroke-dasharray:6 4;}</style>
+<text class="title" x="20.0" y="30.0">RETAINED PIN &#8212; TOP VIEW (CLEARANCE INCLUDED)</text>
+<text class="subtitle" x="20.0" y="52.0">plan &#183; nominal (grey) + envelope (red) &#183; c = 0.10 mm &#183; mm</text>
+<circle class="ovr" cx="360.0" cy="290.0" r="178.2" fill="none"/>
+<circle class="ovrh" cx="360.0" cy="290.0" r="105.4" fill="none"/>
+<circle class="ghost" cx="360.0" cy="290.0" r="170.0" fill="none"/>
+<circle class="ghosth" cx="360.0" cy="290.0" r="102.0" fill="none"/>
+<path class="center" d="M159.7,290.0 L560.3,290.0"/>
+<path class="center" d="M360.0,89.7 L360.0,490.3"/>
+<path class="lead" d="M454.4,138.9 L604.0,180.0"/><path d="M454.4,138.9 L464.0,138.4 L462.1,144.6 Z" fill="#555"/><text class="callout" x="608.0" y="183.5">&#216;10.48 &#8212; rd&#8242;</text>
+<path class="lead" d="M438.3,360.5 L604.0,380.0"/><path d="M438.3,360.5 L447.6,358.3 L446.9,364.6 Z" fill="#555"/><text class="callout" x="608.0" y="383.5">&#216;6.20 &#8212; pd&#8242;</text>
+<text class="note" x="20.0" y="536.0">grey = nominal pin &#183; red = envelope</text>
+</svg>
+<figcaption>Top view with clearance &#183; <code>pin_retained_clearance_top.svg</code>.</figcaption>
+</figure>
+
+<p class="foot">
+The clearance version is built by the same call with the
+<code>clearance</code> parameter (mm):
+<code>pin_retained(doc, name, h, pd, rd, clearance=0.1)</code>. The embedded
+drawings are <code>pin_retained_clearance_front.svg</code> and
+<code>pin_retained_clearance_top.svg</code>.
+</p>
+
+</main>
+</body>
+</html>

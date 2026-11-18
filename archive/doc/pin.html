@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retained Pin &#8212; Specification</title>
+<style>
+:root{--ink:#1a1a24;--acc:#2b5b84;--bg:#fff;--soft:#f4f6f9;--mut:#5c6472;--line:#d9dee5}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+ color:var(--ink);background:var(--soft);line-height:1.55}
+main{max-width:1060px;margin:0 auto;background:var(--bg);padding:40px 52px 90px;
+ box-shadow:0 0 24px rgba(0,0,0,.08)}
+h1{font-size:1.9em;margin:.2em 0 .1em}
+h2{font-size:1.45em;border-bottom:2px solid var(--line);padding-bottom:.25em;
+ margin-top:1.7em;color:var(--acc)}
+h3{font-size:1.13em;margin:1.3em 0 .2em;color:var(--acc)}
+code{background:#eef1f5;border:1px solid var(--line);border-radius:4px;padding:0 .3em;
+ font-size:.9em;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+pre{background:#eef1f5;border:1px solid var(--line);border-radius:6px;padding:14px 16px;
+ overflow:auto;font-size:.82em;line-height:1.5;margin:.8em 0 1.4em}
+pre code{background:none;border:0;padding:0;font-size:1em}
+table{border-collapse:collapse;width:100%;margin:.6em 0 1.2em;font-size:.92em}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+figure{margin:1.4em 0 2em;padding:14px;border:1px solid var(--line);border-radius:8px;
+ background:#fff}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:.9em;color:var(--mut);margin-top:.55em;text-align:center}
+.fig-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:860px){main{padding:22px 14px 60px}.fig-grid{grid-template-columns:1fr}}
+.foot{margin-top:2.5em;padding-top:1em;border-top:1px solid var(--line);
+ color:var(--mut);font-size:.85em}
+.legend{font-size:11px;fill:var(--mut)}
+.swatch{display:inline-block;width:1.6em;height:0;border-top:2px solid #b3bac3;
+ vertical-align:middle;margin:0 .3em}
+.swatch.ovr{border-color:#c0392b}
+/* inline-SVG classes */
+path.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1}
+path.ovr{fill:none;stroke:#c0392b;stroke-width:1.7}
+path.ovrj{fill:none;stroke:#c0392b;stroke-width:1.2}
+path.center{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:10 4 3 4}
+path.dim{fill:none;stroke:#666;stroke-width:1.1}
+path.ref{fill:none;stroke:#777;stroke-width:1;stroke-dasharray:2 3}
+path.lead{fill:none;stroke:#777;stroke-width:1.1}
+path.axis{fill:none;stroke:#9aa;stroke-width:1.1}
+path.area{fill:#eef4fa;stroke:#1a1a24;stroke-width:1.6;stroke-linejoin:round}
+path.areaovr{fill:#fdf0ef;stroke:#c0392b;stroke-width:1.7;stroke-linejoin:round}
+circle.ovr{fill:none;stroke:#c0392b;stroke-width:1.7}
+circle.ovrh{fill:none;stroke:#c0392b;stroke-width:1.1;stroke-dasharray:6 4}
+circle.ghost{fill:none;stroke:#b3bac3;stroke-width:1.1}
+circle.ghosth{fill:none;stroke:#b3bac3;stroke-width:1.1;stroke-dasharray:6 4}
+circle.vtx{fill:#1a1a24}
+text.title{font-size:19px;font-weight:bold;fill:#111}
+text.subtitle{font-size:12px;fill:#555}
+text.dimtxt{font-size:12px;fill:#555;text-anchor:middle}
+text.callout{font-size:11.5px;fill:#444}
+text.note{font-size:11.5px;fill:#666}
+text.plbl{font-size:13px;font-weight:bold;fill:#0b6fa4}
+text.axislbl{font-size:13px;font-style:italic;fill:#666}
+</style>
+</head>
+<body>
+<main>
+<h1>Retained pin</h1>
+<p>
+The retained pin is a cylindrical shaft with a splayed <b>flare</b> (cone) at
+each end that traps a mating collar axially. The pin is a
+<b>solid of revolution</b>, so an elevation and a plan describe it fully.
+All numbers below are generated from the chosen nominal set in
+<code>doc/make_pin_html.py</code>.
+</p>
+
+<h2>Parameters</h2>
+<table>
+<tr><th>symbol</th><th>name</th><th>value</th><th>note</th></tr>
+<tr><td><code>pd</code></td><td>pin (shaft) diameter</td><td>6.0&nbsp;mm</td><td>straight central shaft</td></tr>
+<tr><td><code>rd</code></td><td>retain (flare) diameter</td><td>10.0&nbsp;mm</td><td>outer diameter at each end face</td></tr>
+<tr><td><code>h</code></td><td>overall pin height</td><td>10.0&nbsp;mm</td><td>end face to end face (chosen nominal)</td></tr>
+<tr><td><code>p_ang</code></td><td>flare flank angle (<code>angle</code>)</td><td>45&#176;</td><td>flare flank angle to the end face</td></tr>
+<tr><td><code>c</code></td><td>clearance (<code>clearance</code>)</td><td>0.10&nbsp;mm</td><td>optional; pushes every face out along its own normal</td></tr>
+</table>
+
+<h3>Derived geometry</h3>
+<table>
+<tr><th>symbol</th><th>meaning</th><th>expression</th><th>value</th></tr>
+<tr><td><code>cone</code></td><td>visible cone (frustum) height</td><td><code>(rd/2 &#8722; pd/2)&#183;tan(p_ang)</code></td><td>2.00&nbsp;mm</td></tr>
+<tr><td><code>ls</code></td><td>straight shaft length</td><td><code>h &#8722; 2&#183;cone</code></td><td>6.00&nbsp;mm</td></tr>
+<tr><td><code>ca</code></td><td>complete-cone height (end face &#8594; apex)</td><td><code>(rd/2)&#183;tan(p_ang)</code></td><td>5.00&nbsp;mm</td></tr>
+</table>
+<p>
+Valid range: <code>0 &lt; p_ang &lt; 90</code>, <code>rd &gt; pd</code>,
+<code>h &gt; 2&#183;cone</code>. With <code>h = 10</code> the two
+complete-cone apexes coincide, since <code>h = 2&#183;ca</code>.
+</p>
+
+<h2>Views</h2>
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 600" width="700" height="600" role="img" aria-label="Retained pin front view, nominal and clearance envelope">
+<defs><marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker><marker id="arwR" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#666"/></marker></defs>
+<text class="title" x="20" y="30">RETAINED PIN &#8212; FRONT VIEW</text>
+<text class="subtitle" x="20" y="52">nominal (grey) + clearance envelope (red) &#183; every face +c along its normal &#183; c = 0.10 mm &#183; p_ang = 45&#176; &#183; mm</text>
+<path class="ghost" d="M540,74 L570,74"/>
+<text class="legend" x="576" y="78">nominal</text>
+<path class="ovr" d="M540,92 L570,92"/>
+<text class="legend" x="576" y="96">envelope</text>
+<path class="center" d="M300.0,150 L300.0,510"/>
+<path class="ghost" d="M 300,480 L 450,480 L 390,420 L 390,240 L 450,180 L 300,180 Z"/>
+<path class="ghost" d="M390,420 L210,420"/>
+<path class="ghost" d="M390,240 L210,240"/>
+<path class="ovr" d="M 300,483 L 457.24,483 L 393,418.76 L 393,241.24 L 457.24,177 L 300,177 Z"/>
+<path class="ovrj" d="M393,418.757 L207,418.757"/>
+<path class="ovrj" d="M393,241.243 L207,241.243"/>
+<path class="ref" d="M142.757,483 L60,483"/>
+<path class="ref" d="M142.757,177 L60,177"/>
+<path class="dim" marker-start="url(#arwR)" marker-end="url(#arw)" d="M70,483 L70,177"/>
+<text class="dimtxt" x="64" y="330" transform="rotate(-90 64 330)">h+2c = 10.2</text>
+<path class="ref" d="M393,483 L393,540"/>
+<path class="ref" d="M207,483 L207,540"/>
+<path class="dim" marker-start="url(#arwR)" marker-end="url(#arw)" d="M207,532 L393,532"/>
+<text class="dimtxt" x="300" y="527">&#216;6.20 &#8212; pd+2c</text>
+<path class="ref" d="M457.243,483 L457.243,572"/>
+<path class="ref" d="M142.757,483 L142.757,572"/>
+<path class="dim" marker-start="url(#arwR)" marker-end="url(#arw)" d="M142.757,564 L457.243,564"/>
+<text class="dimtxt" x="300" y="559">&#216;10.48 &#8212; rd+2c&#183;cot(p/2)</text>
+<path class="ref" d="M450,480 L620,480"/>
+<path class="ref" d="M390,420 L620,420"/>
+<path class="dim" marker-start="url(#arwR)" marker-end="url(#arw)" d="M610,480 L610,420"/>
+<text class="dimtxt" x="604" y="450" transform="rotate(-90 604 450)">cone h = 2</text>
+<path class="dim" marker-start="url(#arwR)" marker-end="url(#arw)" d="M395.243,483 A62.0,62.0 0 0,1 413.402,439.159"/>
+<text class="dimtxt" x="440" y="450">p_ang</text>
+<path class="lead" d="M457.243,177 L516,157"/>
+<path d="M457.243,177 L466.243,176 L463.243,182 Z" fill="#555"/>
+<text class="callout" x="520" y="161">c = 0.10 mm &#8212; normal to each face</text>
+<text class="note" x="20" y="590">rim corners extended (sharp); cone/cylinder junction shifts by c&#183;tan(45&#176;&#8722;p_ang/2) = 0.04 mm</text>
+</svg>
+<figcaption>Front view (elevation) &#183; nominal pin (grey) and clearance
+envelope (red), <code>c = 0.10 mm</code>.</figcaption>
+</figure>
+
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 450" width="700" height="450" role="img" aria-label="Retained pin top view, nominal and clearance envelope">
+<circle class="ovr" cx="340.0" cy="220.0" r="157.24"/>
+<circle class="ovrh" cx="340.0" cy="220.0" r="93"/>
+<circle class="ghost" cx="340.0" cy="220.0" r="150"/>
+<circle class="ghosth" cx="340.0" cy="220.0" r="90"/>
+<path class="center" d="M150.0,220.0 L530.0,220.0"/>
+<path class="center" d="M340.0,30.0 L340.0,410.0"/>
+<path class="lead" d="M463.909,123.192 L540,110"/>
+<path d="M463.909,123.192 L471.909,125.192 L467.909,131.192 Z" fill="#555"/>
+<text class="callout" x="544" y="114">&#216;10.48 &#8212; rd&#8242; (envelope)</text>
+<path class="lead" d="M413.285,277.257 L540,330"/>
+<path d="M413.285,277.257 L421.285,274.257 L416.285,269.257 Z" fill="#555"/>
+<text class="callout" x="544" y="334">&#216;6.2 &#8212; pd&#8242; (hidden)</text>
+<text class="note" x="20" y="436">grey = nominal pin &#183; red = clearance envelope</text>
+</svg>
+<figcaption>Top view (plan) &#183; looking down the pin axis.</figcaption>
+</figure>
+
+<h2>Clearance envelope</h2>
+<p>
+Starting from the nominal geometry, every surface is pushed out along its own
+outward normal by <code>c = 0.1&nbsp;mm</code>; where two offset faces
+meet at the end rims they are extended to a sharp corner. The result is again a
+retained pin of the same flank angle, with
+<code>h&#8242; = h + 2c</code>, <code>pd&#8242; = pd + 2c</code> and
+<code>rd&#8242; = rd + 2c&#183;cot(p_ang/2)</code>.
+</p>
+<table>
+<tr><th>feature</th><th>growth</th><th>expression</th><th>value</th></tr>
+<tr><td>end (retain) &#216;</td><td>rim, radial</td><td><code>2c&#183;cot(p_ang/2)</code></td><td>+0.48&nbsp;mm &#8594; &#216;10.48</td></tr>
+<tr><td>waist (shaft) &#216;</td><td>radial</td><td><code>2c</code></td><td>+0.20&nbsp;mm &#8594; &#216;6.20</td></tr>
+<tr><td>overall height</td><td>axial (each face)</td><td><code>2c</code></td><td>+0.20&nbsp;mm &#8594; 10.20</td></tr>
+<tr><td>cone/cylinder junction</td><td>axial shift</td><td><code>c&#183;tan(45&#176; &#8722; p_ang/2)</code></td><td>+0.04&nbsp;mm</td></tr>
+</table>
+
+<h2>Area of rotation</h2>
+<p>
+The pin is swept by revolving the closed meridian profile about the <i>z</i>
+axis. The profile lies in the XZ half-plane (<code>y = 0</code>): <i>x</i> is
+the distance from the axis and <i>z</i> the height. The closing segment
+P5&nbsp;&#8594;&nbsp;P0 lies on the axis, so a 360&#176; revolution makes a
+closed solid. Every point is shown as an equation below.
+</p>
+
+<h3>Nominal pin</h3>
+<p>with <code>cone = (rd/2 &#8722; pd/2)&#183;tan(p_ang)</code>:</p>
+<div class="fig-grid">
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 460" width="360" height="460" role="img" aria-label="Nominal rotation profile">
+<path class="axis" d="M70.0,400.0 L244,400.0"/>
+<path class="axis" d="M70.0,400.0 L70.0,106"/>
+<text class="axislbl" x="250" y="404">x</text>
+<text class="axislbl" x="44" y="100">z</text>
+<path class="area" d="M 70,400 L 200,400 L 148,348 L 148,192 L 200,140 L 70,140 Z"/>
+<circle class="vtx" cx="70" cy="400" r="2.6"/>
+<text class="plbl" x="44" y="420">P0</text>
+<circle class="vtx" cx="200" cy="400" r="2.6"/>
+<text class="plbl" x="216" y="420">P1</text>
+<circle class="vtx" cx="148" cy="348" r="2.6"/>
+<text class="plbl" x="162" y="352">P2</text>
+<circle class="vtx" cx="148" cy="192" r="2.6"/>
+<text class="plbl" x="162" y="186">P3</text>
+<circle class="vtx" cx="200" cy="140" r="2.6"/>
+<text class="plbl" x="216" y="130">P4</text>
+<circle class="vtx" cx="70" cy="140" r="2.6"/>
+<text class="plbl" x="44" y="130">P5</text>
+</svg>
+<figcaption>Nominal profile &#183; revolve about <i>z</i>.</figcaption>
+</figure>
+<div>
+<table>
+<tr><th>point</th><th>x</th><th>z</th><th>between</th></tr>
+<tr><td>P0</td><td><code>0</code></td><td><code>0</code></td><td>axis, bottom</td></tr><tr><td>P1</td><td><code>rd/2</code></td><td><code>0</code></td><td>bottom end face &#8594; flare rim</td></tr><tr><td>P2</td><td><code>pd/2</code></td><td><code>cone</code></td><td>flare flank &#8594; shaft</td></tr><tr><td>P3</td><td><code>pd/2</code></td><td><code>h &#8722; cone</code></td><td>shaft &#8594; top flare</td></tr><tr><td>P4</td><td><code>rd/2</code></td><td><code>h</code></td><td>flare flank &#8594; top rim</td></tr><tr><td>P5</td><td><code>0</code></td><td><code>h</code></td><td>top end face &#8594; axis</td></tr>
+</table>
+</div>
+</div>
+<p>Path in <code>x,z</code> (numeric, from the chosen values):</p>
+<pre><code>M 0,0 L 5,0 L 3,2 L 3,8 L 5,10 L 0,10 Z</code></pre>
+
+<h3>Clearance version</h3>
+<p>
+Same six-point form with the clearance-grown values
+<code>h&#8242; = h + 2c</code>, <code>pd&#8242; = pd + 2c</code>,
+<code>rd&#8242; = rd + 2c/tan(p_ang/2)</code> and
+<code>cone&#8242; = (rd&#8242;/2 &#8722; pd&#8242;/2)&#183;tan(p_ang)</code>:
+</p>
+<div class="fig-grid">
+<figure>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 460" width="360" height="460" role="img" aria-label="Clearance rotation profile">
+<path class="axis" d="M70.0,400.0 L250.277,400.0"/>
+<path class="axis" d="M70.0,400.0 L70.0,100.8"/>
+<text class="axislbl" x="256.277" y="404">x</text>
+<text class="axislbl" x="44" y="94.8">z</text>
+<path class="areaovr" d="M 70,400 L 206.28,400 L 150.6,344.32 L 150.6,190.48 L 206.28,134.8 L 70,134.8 Z"/>
+<circle class="vtx" cx="70" cy="400" r="2.6"/>
+<text class="plbl" x="44" y="420">P0</text>
+<circle class="vtx" cx="206.277" cy="400" r="2.6"/>
+<text class="plbl" x="222.277" y="420">P1</text>
+<circle class="vtx" cx="150.6" cy="344.323" r="2.6"/>
+<text class="plbl" x="164.6" y="348.323">P2</text>
+<circle class="vtx" cx="150.6" cy="190.477" r="2.6"/>
+<text class="plbl" x="164.6" y="184.477">P3</text>
+<circle class="vtx" cx="206.277" cy="134.8" r="2.6"/>
+<text class="plbl" x="222.277" y="124.8">P4</text>
+<circle class="vtx" cx="70" cy="134.8" r="2.6"/>
+<text class="plbl" x="44" y="124.8">P5</text>
+</svg>
+<figcaption>Clearance profile &#183; same flank angle.</figcaption>
+</figure>
+<div>
+<table>
+<tr><th>point</th><th>x</th><th>z</th><th>between</th></tr>
+<tr><td>P0</td><td><code>0</code></td><td><code>0</code></td><td>axis, bottom</td></tr><tr><td>P1</td><td><code>rd&#8242;/2</code></td><td><code>0</code></td><td>bottom end face &#8594; flare rim</td></tr><tr><td>P2</td><td><code>pd&#8242;/2</code></td><td><code>cone&#8242;</code></td><td>flare flank &#8594; shaft</td></tr><tr><td>P3</td><td><code>pd&#8242;/2</code></td><td><code>h&#8242; &#8722; cone&#8242;</code></td><td>shaft &#8594; top flare</td></tr><tr><td>P4</td><td><code>rd&#8242;/2</code></td><td><code>h&#8242;</code></td><td>flare flank &#8594; top rim</td></tr><tr><td>P5</td><td><code>0</code></td><td><code>h&#8242;</code></td><td>top end face &#8594; axis</td></tr>
+</table>
+</div>
+</div>
+<p>Path in <code>x,z</code> (numeric, <code>c = 0.10</code>):</p>
+<pre><code>M 0,0 L 5.2414,0 L 3.1,2.1414 L 3.1,8.0586 L 5.2414,10.2 L 0,10.2 Z</code></pre>
+<p>
+The envelope is built from <code>z = 0</code> like any pin. To centre it on the
+nominal pin, as in the drawing, shift it by <code>&#8722;c</code>
+(<code>z &#8594; z &#8722; c</code>), so it spans
+<code>z = &#8722;0.10 &#8230; 10.10</code>.
+</p>
+
+<h2>Module</h2>
+<p>
+The part is built by <code>pin_retained()</code> in
+<code>pin_retained.py</code>; the same call with
+<code>clearance=0.10</code> gives the envelope.
+</p>
+<pre><code>from pin_retained import pin_retained
+
+pin = pin_retained(doc, "Pin", height=10.0, diam=6.0,
+                   diam_end=10.0, angle=45)
+env = pin_retained(doc, "Envelope", height=10.0, diam=6.0,
+                   diam_end=10.0, angle=45,
+                   clearance=0.10)</code></pre>
+
+<p class="foot">
+Values: <code>pd = 6.0</code>, <code>rd = 10.0</code>,
+<code>h = 10.0</code>, <code>p_ang = 45</code>,
+<code>c = 0.10</code>. Generated by <code>doc/make_pin_html.py</code>;
+regenerate after changing a parameter.
+</p>
+</main>
+</body>
+</html>
